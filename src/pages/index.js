@@ -1,9 +1,0 @@
-export { JobsBrowse } from "./JobsBrowse.jsx";
-export { MyApplications } from "./MyApplications.jsx";
-export { MyCVs } from "./MyCVs.jsx";
-export { CandidateProfilePage } from "./CandidateProfilePage.jsx";
-export { SavedJobs } from "./SavedJobs.jsx";
-export { RecruiterJobs } from "./RecruiterJobs.jsx";
-export { JobForm } from "./JobForm.jsx";
-export { JobApplicants } from "./JobApplicants.jsx";
-export { CompanyProfilePage } from "./CompanyProfilePage.jsx";

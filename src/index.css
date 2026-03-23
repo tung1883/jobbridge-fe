@@ -1,5 +1,5 @@
 /* App shell: typography and colors come from GlobalStyles (shared.jsx). */
-html,
+/* html,
 body {
   margin: 0;
 }
@@ -7,4 +7,4 @@ body {
 #root {
   min-height: 100svh;
   width: 100%;
-}
+} */
