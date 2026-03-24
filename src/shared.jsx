@@ -1,7 +1,8 @@
-import { useEffect } from "react"
+import { useEffect, useState, useRef } from "react"
+import { createPortal } from "react-dom"
+
 import { BrandLogo } from "./BrandLogo.jsx"
 
-// ── Spinner ────────────────────────────────────────────────
 export function Spinner({ size, white, gold } = {}) {
     return (
         <span
@@ -17,7 +18,6 @@ export function Spinner({ size, white, gold } = {}) {
     )
 }
 
-// ── Alert ──────────────────────────────────────────────────
 export function Alert({ type = "danger", children, onClose }) {
     const icons = { danger: "⚠", success: "✓", warn: "⚠", info: "ℹ" }
     return (
@@ -44,7 +44,6 @@ export function Alert({ type = "danger", children, onClose }) {
     )
 }
 
-// ── StatusBadge ────────────────────────────────────────────
 const STATUS_LABELS = {
     submitted: "Submitted",
     under_review: "Under Review",
@@ -59,7 +58,6 @@ export function StatusBadge({ status }) {
     return <span className={`badge status-${status}`}>{STATUS_LABELS[status] || status}</span>
 }
 
-// ── Field wrapper ──────────────────────────────────────────
 export function Field({ label, optional, error, hint, children, style }) {
     return (
         <div className="field" style={style}>
@@ -81,24 +79,30 @@ export function Field({ label, optional, error, hint, children, style }) {
     )
 }
 
-// ── Modal ──────────────────────────────────────────────────
 export function Modal({ title, sub, onClose, children, footer, wide }) {
     useEffect(() => {
         const h = (e) => {
             if (e.key === "Escape" && onClose) onClose()
         }
         document.addEventListener("keydown", h)
-        return () => document.removeEventListener("keydown", h)
+        // Lock body scroll while modal is open
+        const prev = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+        return () => {
+            document.removeEventListener("keydown", h)
+            document.body.style.overflow = prev
+        }
     }, [onClose])
 
-    return (
+    return createPortal(
         <div
             className="modal-backdrop"
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget && onClose) onClose()
             }}
+            style={{zIndex: 10000}}
         >
-            <div className={`modal${wide ? " modal-lg" : ""}`} role="dialog">
+            <div className={`modal${wide ? " modal-lg" : ""}`} role="dialog" aria-modal="true">
                 <div className="modal-header">
                     <div>
                         <div className="modal-title">{title}</div>
@@ -113,11 +117,11 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
                 {children}
                 {footer && <div className="modal-footer">{footer}</div>}
             </div>
-        </div>
+        </div>,
+        document.body,
     )
 }
 
-// ── EmptyState ─────────────────────────────────────────────
 export function EmptyState({ icon, title, desc, action }) {
     return (
         <div className="empty-state">
@@ -129,7 +133,7 @@ export function EmptyState({ icon, title, desc, action }) {
     )
 }
 
-// ── TopNav ─────────────────────────────────────────────────
+// -- top navigation --
 export function TopNav({ user, navigate, onLogout }) {
     const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?"
     return (
@@ -164,7 +168,7 @@ export function TopNav({ user, navigate, onLogout }) {
     )
 }
 
-// ── Sidebar ────────────────────────────────────────────────
+// -- sidebar --
 const SEEKER_NAV = [
     { section: "Discover" },
     { id: "jobs", icon: "🔍", label: "Browse Jobs" },
@@ -214,7 +218,6 @@ export function Sidebar({ role, active, onNavigate, onLogout }) {
     )
 }
 
-// ── ConfirmModal ───────────────────────────────────────────
 export function ConfirmModal({ title, desc, onConfirm, onCancel, danger }) {
     return (
         <Modal
@@ -235,7 +238,6 @@ export function ConfirmModal({ title, desc, onConfirm, onCancel, danger }) {
     )
 }
 
-// ── LoadingPage ────────────────────────────────────────────
 export function LoadingPage() {
     return (
         <div
@@ -255,7 +257,6 @@ export function LoadingPage() {
     )
 }
 
-// ── ErrorPage ──────────────────────────────────────────────
 export function ErrorPage({ message, onRetry }) {
     return (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
@@ -275,10 +276,9 @@ export function ErrorPage({ message, onRetry }) {
     )
 }
 
-// ── SalaryDisplay ──────────────────────────────────────────
 export function SalaryDisplay({ min, max, currency = "USD" }) {
     const fmt = (n) => Number(n).toLocaleString()
-    if ((!min && !max) || (min == 0 && !max) || (!min && max == 0 && min == 0 && max == 0)) {
+    if ((!min && !max) || (min == 0 && max == 0)) {
         return <span style={{ color: "var(--muted)" }}>Salary Negotiable</span>
     }
     if (min && max)
@@ -301,7 +301,6 @@ export function SalaryDisplay({ min, max, currency = "USD" }) {
         )
 }
 
-// ── DateDisplay ────────────────────────────────────────────
 export function DateDisplay({ date }) {
     if (!date) return <span>—</span>
     return (
@@ -312,5 +311,220 @@ export function DateDisplay({ date }) {
                 year: "numeric",
             })}
         </span>
+    )
+}
+
+export function ImageViewer({ src, alt, className, style }) {
+    const [isOpen, setIsOpen] = useState(false)
+    const [scale, setScale] = useState(1) // zoom level
+    const startYRef = useRef(null)
+    const overlayRef = useRef(null)
+
+    // Close on Esc key
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.key === "Escape") {
+                setIsOpen(false)
+                setScale(1) // reset zoom
+            }
+        }
+        if (isOpen) window.addEventListener("keydown", handleKey)
+        return () => window.removeEventListener("keydown", handleKey)
+    }, [isOpen])
+
+    // Touch/mouse drag to dismiss
+    const handleDragStart = (e) => {
+        startYRef.current = e.touches ? e.touches[0].clientY : e.clientY
+    }
+
+    const handleDragMove = (e) => {
+        if (!startYRef.current) return
+        const currentY = e.touches ? e.touches[0].clientY : e.clientY
+        const diff = currentY - startYRef.current
+        if (Math.abs(diff) > 100) {
+            setIsOpen(false)
+            setScale(1)
+        }
+    }
+
+    // Toggle zoom on image click
+    const toggleZoom = (e) => {
+        e.stopPropagation() // prevent closing overlay
+        setScale((prev) => (prev === 1 ? 2 : 1)) // zoom in/out
+    }
+
+    return (
+        <>
+            {/* Thumbnail */}
+            <img src={src} alt={alt} className={className} style={{ cursor: "pointer", ...style }} onClick={() => setIsOpen(true)} />
+
+            {/* Overlay */}
+            {isOpen &&
+                createPortal(
+                    <div
+                        ref={overlayRef}
+                        onClick={() => {
+                            setIsOpen(false)
+                            setScale(1)
+                        }}
+                        onMouseDown={handleDragStart}
+                        onMouseMove={handleDragMove}
+                        onTouchStart={handleDragStart}
+                        onTouchMove={handleDragMove}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            background: "rgba(0,0,0,0.85)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            zIndex: 9999,
+                            animation: "fadeIn 0.25s ease",
+                            cursor: scale === 1 ? "zoom-in" : "zoom-out",
+                        }}
+                    >
+                        <img
+                            src={src}
+                            alt={alt}
+                            onClick={toggleZoom}
+                            style={{
+                                maxWidth: "90%",
+                                maxHeight: "90%",
+                                borderRadius: 12,
+                                boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+                                transform: `scale(${scale})`,
+                                transition: "transform 0.25s ease",
+                            }}
+                        />
+                    </div>,
+                    document.body,
+                )}
+
+            <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0 }
+          to { opacity: 1 }
+        }
+      `}</style>
+        </>
+    )
+}
+
+// PDF Preview
+export function PdfViewerModal({ pdfPath, pdfName, onClose, onDelete }) {
+    const [pdfUrl, setPdfUrl] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchPdf = async () => {
+            try {
+                const res = await fetch(pdfPath, { method: "GET" })
+                const blob = await res.blob()
+                const url = URL.createObjectURL(blob)
+                setPdfUrl(url)
+            } catch (err) {
+                console.error("Failed to load PDF", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchPdf()
+
+        return () => {
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+        }
+    }, [pdfPath])
+
+    const handleDownload = () => {
+        if (!pdfUrl) return
+        const link = document.createElement("a")
+        link.href = pdfUrl
+        link.download = pdfName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    if (loading) return null
+
+    return createPortal(
+        <div
+            style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.8)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 9999,
+            }}
+            onClick={onClose}
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    width: "90%",
+                    maxWidth: "800px",
+                    height: "90%",
+                    background: "#fff",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+                    display: "flex",
+                    flexDirection: "column",
+                    maxHeight: "90%",
+                }}
+            >
+                {/* Header */}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid #ccc",
+                    }}
+                >
+                    <h3 style={{ margin: 0, color: "#2563eb" }}>PDF Viewer</h3>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            fontSize: "1.25rem",
+                            fontWeight: "bold",
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                        }}
+                    >
+                        ×
+                    </button>
+                </div>
+
+                {/* PDF Content */}
+                <div style={{ flex: 1, overflow: "auto" }}>
+                    <iframe src={pdfUrl} type="application/pdf" style={{ width: "100%", height: "100%" }} title="PDF Preview" />
+                </div>
+
+                {/* Actions */}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: "0.5rem",
+                        padding: "0.75rem 1rem",
+                        borderTop: "1px solid #ccc",
+                    }}
+                >
+                    <button className="btn btn-primary" style={{ width: "6rem" }} onClick={handleDownload}>
+                        Download
+                    </button>
+                    <button onClick={onDelete} className="btn btn-danger">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body,
     )
 }

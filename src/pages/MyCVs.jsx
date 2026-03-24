@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react"
-import { cvs } from "../api.js"
-import { Spinner, Alert, EmptyState, LoadingPage, DateDisplay, ConfirmModal } from "../shared.jsx"
+
+import { cvs, downloads } from "../api.js"
+import { Spinner, Alert, EmptyState, LoadingPage, DateDisplay, ConfirmModal, PdfViewerModal } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
+import { fileUrl } from "./utils.js"
 
 export function MyCVs() {
     const { data, loading, error, refetch } = useAsync(() => cvs.list(), [])
@@ -9,11 +11,9 @@ export function MyCVs() {
     const [uploadErr, setUploadErr] = useState("")
     const [deleteId, setDeleteId] = useState(null)
     const [deletingId, setDeletingId] = useState(null)
+    const [previewing, setPreviewing] = useState(null)
     const fileRef = useRef()
-
-    useEffect(() => {
-        console.log(data)
-    }, [data])
+    const list = data || []
 
     async function handleUpload(e) {
         const file = e.target.files?.[0]
@@ -52,6 +52,7 @@ export function MyCVs() {
 
         try {
             await cvs.delete(id)
+            setPreviewing(null)
             refetch()
         } catch {
             // handle error
@@ -60,14 +61,13 @@ export function MyCVs() {
         }
     }
 
-    const list = data || []
 
     return (
         <div className="page-enter">
             <div className="page-header-row">
                 <div>
                     <div className="page-title">My CVs</div>
-                    <div className="page-sub">PDF or DOCX · max 10 MB</div>
+                    <div className="page-sub">Accept PDF, DOC or DOCX · Max 10 MB</div>
                 </div>
                 <div>
                     <input type="file" ref={fileRef} accept=".pdf,.docx" style={{ display: "none" }} onChange={handleUpload} />
@@ -88,6 +88,20 @@ export function MyCVs() {
                 <Alert type="danger" onClose={() => setUploadErr("")}>
                     {uploadErr}
                 </Alert>
+            )}
+
+            {previewing && (
+                <PdfViewerModal
+                    pdfPath={fileUrl(previewing.file_path)}
+                    pdfName={previewing.file_name}
+                    onClose={() => setPreviewing(false)}
+                    onDelete={async () => {
+                        setDeleteId(previewing.id)
+                        // await cvs.delete(previewing.id)
+                        // setPreviewing(null)
+                        refetch()
+                    }}
+                />
             )}
 
             {loading && <LoadingPage />}
@@ -137,24 +151,39 @@ export function MyCVs() {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    {cv.filename || `CV #${cv.id}`}
+                                    {cv.file_name || `CV #${cv.id}`}
                                 </div>
                                 <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)" }}>
-                                    Uploaded <DateDisplay date={cv.created_at} />
+                                    Uploaded at <DateDisplay date={cv.uploaded_at} />
                                     {cv.size_bytes && ` · ${(cv.size_bytes / 1024).toFixed(0)} KB`}
                                 </div>
                             </div>
                             <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
-                                {cv.url && (
-                                    <a
+                                {cv.file_path && (
+                                    <button
                                         className="btn btn-secondary btn-sm"
-                                        href={cv.url}
                                         target="_blank"
                                         rel="noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={async (e) => {
+                                            e.stopPropagation()
+                                            downloads.cv(cv.id, cv.file_name)
+                                        }}
+                                    >
+                                        Download
+                                    </button>
+                                )}
+                                {cv.file_path && cv.file_path.endsWith(".pdf") && (
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={async (e) => {
+                                            e.stopPropagation()
+                                            setPreviewing(cv)
+                                        }}
                                     >
                                         Preview
-                                    </a>
+                                    </button>
                                 )}
                                 <button
                                     type="button"

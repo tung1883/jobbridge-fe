@@ -5,6 +5,7 @@ import { AuthPage } from "./pages/AuthPage.jsx"
 import { Dashboard } from "./pages/DashBoard.jsx"
 
 import "./styles/App.css"
+import { VerificationPage } from "./pages/VerificationPage.jsx"
 
 export default function App() {
     const [user, setUser] = useState(() => {

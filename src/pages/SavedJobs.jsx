@@ -80,11 +80,11 @@ export function SavedJobs({ navigateTo, user }) {
                 {error && <Alert type="danger">{error}</Alert>}
                 <EmptyState
                     icon="🔖"
-                    title="No saved jobs"
-                    desc="Bookmark jobs while browsing to keep track of them here."
+                    title="No favorite jobs found :("
+                    desc="Bookmark your favorite jobs while browsing to keep track of them here."
                     action={
                         <button type="button" className="btn btn-primary" onClick={() => navigateTo("jobs")}>
-                            Browse jobs
+                            Browse Jobs
                         </button>
                     }
                 />
@@ -97,7 +97,12 @@ export function SavedJobs({ navigateTo, user }) {
             <div className="page-header">
                 <div className="page-title">Saved Jobs</div>
                 <div className="page-sub">
-                    {saved.length} job{saved.length !== 1 ? "s" : ""} bookmarked
+                    {
+                        saved?.length && saved?.length > 0 && 
+                            `You have ${saved.length} job${saved.length !== 1 ? 's' : ''} bookmarked, check them out!`
+                            // {saved.length} Job{saved.length !== 1 ? "s" : ""} Bookmarked
+                    
+                    }
                 </div>
             </div>
             {error && (

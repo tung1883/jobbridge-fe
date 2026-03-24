@@ -177,9 +177,10 @@ async function request(method, path, body, isFile = false) {
 const get = (path) => request("GET", path)
 const post = (path, body) => request("POST", path, body)
 const put = (path, body) => request("PUT", path, body)
-const del = (path) => request("DELETE", path)
+const del = (path, body) => request("DELETE", path, body)
 const upload = (path, form) => request("POST", path, form, true)
 const uploadPut = (path, form) => request("PUT", path, form, true)
+const uploadPost = (path, form) => request("POST", path, form, true)
 
 // --- auth ---
 export const auth = {
@@ -198,6 +199,12 @@ export const candidateProfile = {
     getOwn: () => get("/profiles/candidates/my"),
     getById: (id) => get(`/profiles/candidates/${id}`),
     update: (data) => put("/profiles/candidates", data),
+    uploadAvatar: (file) => {
+        const form = new FormData()
+        form.append("avatar", file)
+        return uploadPost("/profiles/candidates/my/avatar", form)
+    },
+    deleteAvatar: () => del(`/profiles/candidates/my/avatar`),
 }
 
 // 2. company profile
@@ -210,10 +217,22 @@ export const companyProfile = {
         form.append("logo", file)
         return uploadPut("/profiles/companies/logo", form)
     },
-    submitVerification: (file) => {
+    // POST /profiles/companies/verify — upload one or more docs
+    submitVerification: (files) => {
         const form = new FormData()
-        form.append("document", file)
+        const fileList = Array.isArray(files) ? files : [files]
+        fileList.forEach((f) => form.append("documents", f))
         return upload("/profiles/companies/verify", form)
+    },
+    // GET /profiles/companies/verify — list all docs for the authenticated company
+    getVerificationDocuments: () => get("/profiles/companies/verify"),
+    // DELETE /profiles/companies/verify — body: { docs: [id, ...] }
+    deleteVerificationDocuments: (ids) => del("/profiles/companies/verify", { docs: Array.isArray(ids) ? ids : [ids] }),
+    // PUT /profiles/companies/verify/:id — replace a single doc file
+    editVerificationDocument: (id, file) => {
+        const form = new FormData()
+        form.append("documents", file)
+        return uploadPut(`/profiles/companies/verify/${id}`, form)
     },
 }
 
@@ -278,3 +297,34 @@ export const applications = {
     getForJob: (job_id) => get(`/applications/job/${job_id}`),
     updateStatus: (id, status) => put(`/applications/${id}/status`, { status }),
 }
+
+// --- download ---
+async function downloadFile(path, suggestedName) {
+    const accessToken = token.getAccess()
+    const res = await fetch(`${BASE}${path}`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+    if (!res.ok) {
+        const errBody = await readErrorPayload(res)
+        throw new Error(errorMessageFromPayload(errBody, res.status))
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = suggestedName || "download"
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+}
+
+export const downloads = {
+    cv: (cvId, fileName) => downloadFile(`/download/cv/${cvId}`, fileName),
+
+    // *note: admin can download any veridoc
+    verificationDoc: (docId, fileName) => downloadFile(`/download/verification/${docId}`, fileName),
+}
+ 

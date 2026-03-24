@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { jobs, savedJobs } from "../api.js"
+import { applications, jobs, savedJobs } from "../api.js"
 import { Spinner, Alert, Field, EmptyState, LoadingPage } from "../shared.jsx"
 import { JOB_TYPES, CURRENCIES } from "./constants.js"
 import { salaryStepForCurrency, validateSalaryMinMax } from "./salary.js"
@@ -21,6 +21,7 @@ export function JobsBrowse({ user }) {
 
     const loadJobs = useCallback(async (f) => {
         const rangeErr = validateSalaryMinMax(f.minSalary, f.maxSalary)
+
         if (rangeErr) {
             setFetchErr(rangeErr)
             return
@@ -36,7 +37,22 @@ export function JobsBrowse({ user }) {
                 currency: f.currency || undefined,
                 type: f.type || undefined,
             })
-            setResults(res?.data ?? [])
+            const myApplications = await applications.getMine()
+
+            if (res?.data) {
+                // Create a map for faster lookup
+                const appMap = new Map(myApplications.map((app) => [app.job_id, app.status]))
+    
+                // Add submittedStatus to jobs if matched
+                const updatedJobs = res.data.map((job) => ({
+                    ...job,
+                    submittedStatus: appMap.get(job.id) || null, // null if no match
+                }))
+                
+                setResults(updatedJobs)
+            } else {
+                setResults([])
+            }
         } catch (e) {
             setFetchErr(e.message || "Could not load jobs.")
         } finally {

@@ -9,6 +9,7 @@ import { RecruiterJobs } from "./RecruiterJobs.jsx"
 import { JobForm } from "./JobForm.jsx"
 import { JobApplicants } from "./JobApplicants.jsx"
 import { CompanyProfilePage } from "./CompanyProfilePage.jsx"
+import { VerificationPage } from "./VerificationPage.jsx"
 
 export function Dashboard({ user, navigate, onLogout }) {
     // Normalize role — handle "recruiter" from BE
@@ -51,11 +52,11 @@ export function Dashboard({ user, navigate, onLogout }) {
                         <EmptyState icon="👥" title="Select a job posting" desc="Go to My Postings and click Applicants on any listing." />
                     )}
                     {isRecruiter && page === "company" && <CompanyProfilePage />}
-                    {isRecruiter && page === "company-verify" && <CompanyVerificationPage />}
-
+                    {isRecruiter && page === "company-verify" && <VerificationPage />}
+    
                     {/* fallback pages */}
                     {!isRecruiter && !["jobs", "applications", "cvs", "profile", "saved"].includes(page) && <JobsBrowse user={user} />}
-                    {isRecruiter && !["jobs-mine", "job-create", "applicants", "company"].includes(page) && (
+                    {isRecruiter && !["jobs-mine", "job-create", "applicants", "company", "company-verify"].includes(page) && (
                         <RecruiterJobs
                             onEditJob={(j) => navTo("job-create", j)}
                             onViewApplicants={(j) => navTo("applicants", j)}

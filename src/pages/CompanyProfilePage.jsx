@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { companyProfile } from "../api.js"
-import { Alert, Field, LoadingPage, ErrorPage, Spinner } from "../shared.jsx"
+import { Alert, Field, LoadingPage, ErrorPage, Spinner, ImageViewer } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
 import { useForm, useSubmit } from "./hooks.js"
 import { fileUrl } from "./utils.js"
@@ -22,10 +22,7 @@ export function CompanyProfilePage() {
 
     const [logoUploading, setLogoUploading] = useState(false)
     const [logoErr, setLogoErr] = useState("")
-    const [verifying, setVerifying] = useState(false)
-    const [verifyMsg, setVerifyMsg] = useState({ type: "", text: "" })
     const logoRef = useRef()
-    const verifyRef = useRef()
 
     useEffect(() => {
         if (profile) {
@@ -50,22 +47,6 @@ export function CompanyProfilePage() {
             setLogoErr(err.message)
         } finally {
             setLogoUploading(false)
-            e.target.value = ""
-        }
-    }
-
-    async function handleVerify(e) {
-        const file = e.target.files?.[0]
-        if (!file) return
-        setVerifying(true)
-        setVerifyMsg({ type: "", text: "" })
-        try {
-            await companyProfile.submitVerification(file)
-            setVerifyMsg({ type: "success", text: "Verification documents submitted. Our team will review within 2–3 business days." })
-        } catch (err) {
-            setVerifyMsg({ type: "danger", text: err.message })
-        } finally {
-            setVerifying(false)
             e.target.value = ""
         }
     }
@@ -110,18 +91,14 @@ export function CompanyProfilePage() {
                             overflow: "hidden",
                             cursor: "pointer",
                         }}
-                        onClick={() => logoRef.current?.click()}
-                        onKeyDown={(e) => e.key === "Enter" && logoRef.current?.click()}
-                        role="button"
                         tabIndex={0}
                     >
                         {profile?.logo_url ? (
-                            <img src={fileUrl(profile.logo_url)} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <ImageViewer src={fileUrl(profile.logo_url)} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             "🏢"
                         )}
                     </div>
-                    <input type="file" ref={logoRef} accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
                 </div>
                 <div style={{ flex: 1, minWidth: "12rem" }}>
                     <div style={{ fontWeight: 600, fontSize: "var(--text-lg)", fontFamily: "var(--font-sans)" }}>
@@ -134,18 +111,38 @@ export function CompanyProfilePage() {
                             <span className="badge badge-warn">⏳ Pending verification</span>
                         )}
                     </div>
-                    {logoErr && <div style={{ fontSize: "var(--text-xs)", color: "var(--danger)", marginTop: "0.3rem" }}>{logoErr}</div>}
-                </div>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => logoRef.current?.click()} disabled={logoUploading}>
-                    {logoUploading ? (
-                        <>
-                            <Spinner size="sm" />
-                            Uploading…
-                        </>
-                    ) : (
-                        "Change logo"
+                    {logoErr && (
+                        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "0.3rem", marginTop: "0.5rem" }}>
+                            {/* Spinner */}
+                            <div
+                                style={{
+                                    width: "10px", // smaller width
+                                    height: "10px", // smaller height
+                                    border: "1.5px solid var(--danger)", // thinner border
+                                    borderTop: "1.5px solid transparent",
+                                    borderRadius: "50%",
+                                    animation: "spin 0.5s linear infinite",
+                                }}
+                            />
+
+                            {/* Error message */}
+                            <div style={{ fontSize: "var(--text-xs)", color: "var(--danger)" }}>Error when uploading logo</div>
+                        </div>
                     )}
-                </button>
+                    </div>
+                <>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => logoRef.current?.click()} disabled={logoUploading}>
+                        {logoUploading ? (
+                            <>
+                                <Spinner size="sm" />
+                                Uploading…
+                            </>
+                        ) : (
+                            "Change logo"
+                        )}
+                    </button>
+                    <input type="file" ref={logoRef} style={{ display: "none" }} accept=".png, .jpg, .jpeg" onChange={handleLogoUpload} />
+                </>
             </div>
 
             <div className="card" style={{ maxWidth: 640, margin: "0 auto 1.25rem" }}>
@@ -197,30 +194,6 @@ export function CompanyProfilePage() {
                     </button>
                 </div>
             </div>
-
-            {profile?.verification_status !== "verified" && (
-                <div className="card-flat" style={{ maxWidth: 640, margin: "0 auto", borderLeft: "3px solid var(--accent)" }}>
-                    <div style={{ fontWeight: 600, marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        Get verified <span className="badge badge-gold">+Trust</span>
-                    </div>
-                    <p style={{ fontSize: "var(--text-sm)", color: "var(--muted)", lineHeight: 1.65, marginBottom: "1rem" }}>
-                        Upload your business registration document (PDF, JPG, or PNG). Our admin team reviews within 2–3 business days. Verified
-                        companies get a badge on all their job postings.
-                    </p>
-                    {verifyMsg.text && <Alert type={verifyMsg.type || "info"}>{verifyMsg.text}</Alert>}
-                    <input type="file" ref={verifyRef} accept=".pdf,.jpg,.jpeg,.png" style={{ }} onChange={handleVerify} />
-                    <button type="button" className="btn btn-secondary" onClick={() => verifyRef.current?.click()} disabled={verifying}>
-                        {verifying ? (
-                            <>
-                                <Spinner size="sm" />
-                                Submitting…
-                            </>
-                        ) : (
-                            "Upload verification document"
-                        )}
-                    </button>
-                </div>
-            )}
         </div>
     )
 }

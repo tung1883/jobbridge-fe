@@ -343,7 +343,7 @@ export function AuthPage({ initialScreen, navigate, onLogin }) {
                                     <div className="auth-title">{role === "recruiter" ? "Company details" : "Your details"}</div>
                                     <p className="auth-sub">
                                         <span className="link" onClick={() => setRegStep(1)}>
-                                            ← Change role
+                                            ← Go back
                                         </span>
                                     </p>
                                     {alertMsg && <Alert type="danger">{alertMsg}</Alert>}
