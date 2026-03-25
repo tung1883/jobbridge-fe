@@ -33,7 +33,7 @@ export function Dashboard({ user, navigate, onLogout }) {
                 <main className="dash-content">
                     {/* job-seeker pages */}
                     {!isRecruiter && page === "jobs" && <JobsBrowse user={user} />}
-                    {!isRecruiter && page === "applications" && <MyApplications />}
+                    {!isRecruiter && page === "applications" && <MyApplications user={user}/>}
                     {!isRecruiter && page === "cvs" && <MyCVs />}
                     {!isRecruiter && page === "profile" && <CandidateProfilePage />}
                     {!isRecruiter && page === "saved" && <SavedJobs navigateTo={navTo} user={user} />}

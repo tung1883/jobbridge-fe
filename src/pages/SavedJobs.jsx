@@ -99,7 +99,7 @@ export function SavedJobs({ navigateTo, user }) {
                 <div className="page-sub">
                     {
                         saved?.length && saved?.length > 0 && 
-                            `You have ${saved.length} job${saved.length !== 1 ? 's' : ''} bookmarked, check them out!`
+                            `You have ${saved.length} job${saved.length !== 1 ? 's' : ''} bookmarked, check ${saved.length === 1 ? 'it' : 'them'} out!`
                             // {saved.length} Job{saved.length !== 1 ? "s" : ""} Bookmarked
                     
                     }

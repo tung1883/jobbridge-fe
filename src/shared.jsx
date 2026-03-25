@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react"
 import { createPortal } from "react-dom"
 
 import { BrandLogo } from "./BrandLogo.jsx"
+import { candidateProfile, companyProfile } from "./api.js"
+import { fileUrl } from "./pages/utils.js"
 
 export function Spinner({ size, white, gold } = {}) {
     return (
@@ -100,7 +102,7 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget && onClose) onClose()
             }}
-            style={{zIndex: 10000}}
+            style={{ zIndex: 10000 }}
         >
             <div className={`modal${wide ? " modal-lg" : ""}`} role="dialog" aria-modal="true">
                 <div className="modal-header">
@@ -136,6 +138,24 @@ export function EmptyState({ icon, title, desc, action }) {
 // -- top navigation --
 export function TopNav({ user, navigate, onLogout }) {
     const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?"
+    const [avatar, setAvatar] = useState(null)
+
+    useEffect(() => {
+        getAvatar()
+    }, [user])
+
+    const getAvatar = async () => {
+        if (!user) return
+
+        if (user?.role === "job_seeker") {
+            const res = await candidateProfile.getOwn()
+            setAvatar(res.avatar_url)
+        } else if (user?.role === "recruiter") {
+            const res = await companyProfile.getOwn()
+            setAvatar(res.logo_url)
+        }
+    }
+
     return (
         <header className="topnav">
             <BrandLogo className="topnav-logo" variant="dark" onClick={() => navigate("landing")} />
@@ -143,7 +163,15 @@ export function TopNav({ user, navigate, onLogout }) {
                 {user ? (
                     <>
                         <div className="topnav-user-pill">
-                            <div className="topnav-user-avatar">{initials}</div>
+                            {avatar ? (
+                                    <ImageViewer
+                                    src={fileUrl(avatar)}
+                                    alt="logo"
+                                    style={{ width: "24px", height: "24px", objectFit: "cover", borderRadius: "50%" }}
+                                />
+                            ) : (
+                                <div className="topnav-user-avatar">{initials}</div>
+                            )}
                             <span className="text-sm truncate" style={{ maxWidth: 180 }}>
                                 {user.email}
                             </span>
@@ -172,7 +200,7 @@ export function TopNav({ user, navigate, onLogout }) {
 const SEEKER_NAV = [
     { section: "Discover" },
     { id: "jobs", icon: "🔍", label: "Browse Jobs" },
-    { id: "saved", icon: "🔖", label: "Saved Jobs" },
+    { id: "saved", icon: "🏷️", label: "Saved Jobs" },
     { section: "My Activity" },
     { id: "applications", icon: "📋", label: "My Applications" },
     { id: "cvs", icon: "📄", label: "My CVs" },
@@ -316,49 +344,51 @@ export function DateDisplay({ date }) {
 
 export function ImageViewer({ src, alt, className, style }) {
     const [isOpen, setIsOpen] = useState(false)
-    const [scale, setScale] = useState(1) // zoom level
+    const [scale, setScale] = useState(1)
     const startYRef = useRef(null)
+    const isDraggingRef = useRef(false) // ← track if mouse is held
     const overlayRef = useRef(null)
 
-    // Close on Esc key
     useEffect(() => {
         const handleKey = (e) => {
             if (e.key === "Escape") {
                 setIsOpen(false)
-                setScale(1) // reset zoom
+                setScale(1)
             }
         }
         if (isOpen) window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
     }, [isOpen])
 
-    // Touch/mouse drag to dismiss
     const handleDragStart = (e) => {
         startYRef.current = e.touches ? e.touches[0].clientY : e.clientY
+        isDraggingRef.current = true
+    }
+
+    const handleDragEnd = () => {
+        startYRef.current = null
+        isDraggingRef.current = false
     }
 
     const handleDragMove = (e) => {
-        if (!startYRef.current) return
+        if (!isDraggingRef.current || startYRef.current === null) return // ← guard
         const currentY = e.touches ? e.touches[0].clientY : e.clientY
         const diff = currentY - startYRef.current
         if (Math.abs(diff) > 100) {
             setIsOpen(false)
             setScale(1)
+            handleDragEnd()
         }
     }
 
-    // Toggle zoom on image click
     const toggleZoom = (e) => {
-        e.stopPropagation() // prevent closing overlay
-        setScale((prev) => (prev === 1 ? 2 : 1)) // zoom in/out
+        e.stopPropagation()
+        setScale((prev) => (prev === 1 ? 2 : 1))
     }
 
     return (
         <>
-            {/* Thumbnail */}
             <img src={src} alt={alt} className={className} style={{ cursor: "pointer", ...style }} onClick={() => setIsOpen(true)} />
-
-            {/* Overlay */}
             {isOpen &&
                 createPortal(
                     <div
@@ -369,8 +399,11 @@ export function ImageViewer({ src, alt, className, style }) {
                         }}
                         onMouseDown={handleDragStart}
                         onMouseMove={handleDragMove}
+                        onMouseUp={handleDragEnd} // ← clear on release
+                        onMouseLeave={handleDragEnd} // ← clear if mouse leaves overlay
                         onTouchStart={handleDragStart}
                         onTouchMove={handleDragMove}
+                        onTouchEnd={handleDragEnd} // ← clear on touch end
                         style={{
                             position: "fixed",
                             inset: 0,
@@ -399,42 +432,56 @@ export function ImageViewer({ src, alt, className, style }) {
                     </div>,
                     document.body,
                 )}
-
-            <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0 }
-          to { opacity: 1 }
-        }
-      `}</style>
+            <style>{`@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }`}</style>
         </>
     )
 }
 
-// PDF Preview
 export function PdfViewerModal({ pdfPath, pdfName, onClose, onDelete }) {
     const [pdfUrl, setPdfUrl] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [progress, setProgress] = useState(0)
+    const [visible, setVisible] = useState(false)
 
     useEffect(() => {
+        setVisible(true)
+        let interval
+        // Animate progress bar while loading
+        interval = setInterval(() => {
+            setProgress((p) => {
+                if (p >= 85) {
+                    clearInterval(interval)
+                    return 85
+                }
+                return p + Math.random() * 12
+            })
+        }, 300)
+
         const fetchPdf = async () => {
             try {
                 const res = await fetch(pdfPath, { method: "GET" })
                 const blob = await res.blob()
                 const url = URL.createObjectURL(blob)
                 setPdfUrl(url)
+                setProgress(100)
             } catch (err) {
                 console.error("Failed to load PDF", err)
             } finally {
-                setLoading(false)
+                clearInterval(interval)
+                setTimeout(() => setLoading(false), 400)
             }
         }
-
         fetchPdf()
-
         return () => {
+            clearInterval(interval)
             if (pdfUrl) URL.revokeObjectURL(pdfUrl)
         }
     }, [pdfPath])
+
+    const handleClose = () => {
+        setVisible(false)
+        onClose()
+    }
 
     const handleDownload = () => {
         if (!pdfUrl) return
@@ -446,85 +493,262 @@ export function PdfViewerModal({ pdfPath, pdfName, onClose, onDelete }) {
         document.body.removeChild(link)
     }
 
-    if (loading) return null
+    const styles = {
+        overlay: {
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            opacity: visible ? 1 : 0,
+            transition: "opacity 0.25s ease",
+        },
+        modal: {
+            width: "90%",
+            maxWidth: 860,
+            height: "90%",
+            maxHeight: "90%",
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.4)",
+            display: "flex",
+            flexDirection: "column",
+            transform: visible ? "translateY(0) scale(1)" : "translateY(20px) scale(0.97)",
+            transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease",
+        },
+        header: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "1rem 1.25rem",
+            borderBottom: "1px solid #e5e7eb",
+            background: "#f9fafb",
+            flexShrink: 0,
+        },
+        fileName: {
+            margin: 0,
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            color: "#111827",
+            maxWidth: "70%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+        },
+        closeBtn: {
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            border: "none",
+            background: "#e5e7eb",
+            cursor: "pointer",
+            fontSize: "1.1rem",
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.15s",
+            flexShrink: 0,
+        },
+        progressBar: {
+            height: 3,
+            background: "#e5e7eb",
+            flexShrink: 0,
+            overflow: "hidden",
+        },
+        progressFill: {
+            height: "100%",
+            background: "linear-gradient(90deg, #2563eb, #60a5fa)",
+            width: `${progress}%`,
+            transition: "width 0.4s ease",
+            opacity: loading ? 1 : 0,
+            transitionProperty: "width, opacity",
+        },
+        content: {
+            flex: 1,
+            overflow: "hidden",
+            position: "relative",
+        },
+        skeleton: {
+            position: "absolute",
+            inset: 0,
+            background: "#f3f4f6",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            padding: 32,
+            opacity: loading ? 1 : 0,
+            transition: "opacity 0.3s ease",
+            pointerEvents: loading ? "auto" : "none",
+        },
+        skeletonIcon: {
+            width: 56,
+            height: 56,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 8,
+        },
+        skeletonLabel: {
+            fontSize: "0.9rem",
+            color: "#6b7280",
+            fontWeight: 500,
+        },
+        skeletonLines: {
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            width: "100%",
+            maxWidth: 480,
+            marginTop: 24,
+        },
+        iframe: {
+            width: "100%",
+            height: "100%",
+            border: "none",
+            opacity: loading ? 0 : 1,
+            transition: "opacity 0.4s ease",
+        },
+        footer: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0.875rem 1.25rem",
+            borderTop: "1px solid #e5e7eb",
+            background: "#f9fafb",
+            flexShrink: 0,
+            gap: "0.5rem",
+        },
+        badge: {
+            fontSize: "0.75rem",
+            color: "#6b7280",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+        },
+        btnDownload: {
+            padding: "0.5rem 1.1rem",
+            borderRadius: 8,
+            border: "1.5px solid #2563eb",
+            background: "#2563eb",
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            transition: "background 0.15s",
+        },
+        btnDelete: {
+            padding: "0.5rem 1.1rem",
+            borderRadius: 8,
+            border: "1.5px solid #fca5a5",
+            background: "#fff",
+            color: "#dc2626",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            transition: "background 0.15s",
+        },
+    }
+
+    const shimmer = `
+        @keyframes shimmer {
+            0% { background-position: -600px 0 }
+            100% { background-position: 600px 0 }
+        }
+        .sk-line {
+            border-radius: 6px; height: 12px;
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 600px 100%;
+            animation: shimmer 1.4s infinite;
+        }
+    `
 
     return createPortal(
-        <div
-            style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.8)",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 9999,
-            }}
-            onClick={onClose}
-        >
-            <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                    width: "90%",
-                    maxWidth: "800px",
-                    height: "90%",
-                    background: "#fff",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-                    display: "flex",
-                    flexDirection: "column",
-                    maxHeight: "90%",
-                }}
-            >
-                {/* Header */}
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0.75rem 1rem",
-                        borderBottom: "1px solid #ccc",
-                    }}
-                >
-                    <h3 style={{ margin: 0, color: "#2563eb" }}>PDF Viewer</h3>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            fontSize: "1.25rem",
-                            fontWeight: "bold",
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                        }}
-                    >
-                        ×
-                    </button>
-                </div>
+        <>
+            <style>{shimmer}</style>
+            <div style={styles.overlay} onClick={handleClose}>
+                <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                    {/* Header */}
+                    <div style={styles.header}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                                <path
+                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                    stroke="#2563eb"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                                <polyline points="14,2 14,8 20,8" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <h3 style={styles.fileName}>{pdfName ?? "Document"}</h3>
+                        </div>
+                        <button style={styles.closeBtn} onClick={handleClose} title="Close">
+                            ✕
+                        </button>
+                    </div>
 
-                {/* PDF Content */}
-                <div style={{ flex: 1, overflow: "auto" }}>
-                    <iframe src={pdfUrl} type="application/pdf" style={{ width: "100%", height: "100%" }} title="PDF Preview" />
-                </div>
+                    {/* Progress bar */}
+                    <div style={styles.progressBar}>
+                        <div style={styles.progressFill} />
+                    </div>
 
-                {/* Actions */}
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        gap: "0.5rem",
-                        padding: "0.75rem 1rem",
-                        borderTop: "1px solid #ccc",
-                    }}
-                >
-                    <button className="btn btn-primary" style={{ width: "6rem" }} onClick={handleDownload}>
-                        Download
-                    </button>
-                    <button onClick={onDelete} className="btn btn-danger">
-                        Delete
-                    </button>
+                    {/* Content */}
+                    <div style={styles.content}>
+                        {/* Loading skeleton */}
+                        <div style={styles.skeleton}>
+                            <div style={styles.skeletonIcon}>
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                    <path
+                                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                        stroke="#2563eb"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                    />
+                                    <polyline points="14,2 14,8 20,8" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                            </div>
+                            <span style={styles.skeletonLabel}>Loading document…</span>
+                            <div style={styles.skeletonLines}>
+                                {[100, 90, 95, 70, 85, 60].map((w, i) => (
+                                    <div key={i} className="sk-line" style={{ width: `${w}%`, animationDelay: `${i * 0.1}s` }} />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* PDF iframe */}
+                        {pdfUrl && <iframe src={pdfUrl} style={styles.iframe} title={pdfName ?? "PDF Preview"} />}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={styles.footer}>
+                        <span style={styles.badge}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="#9ca3af" strokeWidth="2" />
+                                <path d="M12 8v4l3 3" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                            {loading ? "Loading…" : "Ready"}
+                        </span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <button className="btn btn-primary" onClick={handleDownload} disabled={loading}>
+                                Download
+                            </button>
+                            <button className="btn btn-danger" onClick={onDelete}>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>,
+        </>,
         document.body,
     )
 }

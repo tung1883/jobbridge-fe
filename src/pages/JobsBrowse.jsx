@@ -26,8 +26,10 @@ export function JobsBrowse({ user }) {
             setFetchErr(rangeErr)
             return
         }
+
         setFetching(true)
         setFetchErr("")
+        
         try {
             const res = await jobs.search({
                 search: f.search || undefined,
@@ -40,15 +42,24 @@ export function JobsBrowse({ user }) {
             const myApplications = await applications.getMine()
 
             if (res?.data) {
-                // Create a map for faster lookup
-                const appMap = new Map(myApplications.map((app) => [app.job_id, app.status]))
-    
-                // Add submittedStatus to jobs if matched
+                const appMap = new Map(
+                    myApplications.map((app) => [
+                        app.job_id,
+                        {
+                            status: app.status,
+                            application_id: app.id,
+                            cv_id: app.cv_id,
+                            cv_url: app.cv_url,
+                            cv_name: app.cv_name,
+                        },
+                    ]),
+                )
+
                 const updatedJobs = res.data.map((job) => ({
                     ...job,
-                    submittedStatus: appMap.get(job.id) || null, // null if no match
+                    submitted: appMap.get(job.id) || null, // null if no match
                 }))
-                
+
                 setResults(updatedJobs)
             } else {
                 setResults([])
@@ -72,15 +83,19 @@ export function JobsBrowse({ user }) {
             } catch {
                 setSavedIds(new Set())
             }
+
             return undefined
         }
+
         let cancelled = false
+        
         savedJobs
             .list()
             .then((list) => {
                 if (!cancelled) setSavedIds(new Set(list.map((j) => String(j.id))))
             })
             .catch(() => {})
+        
         return () => {
             cancelled = true
         }
@@ -107,6 +122,7 @@ export function JobsBrowse({ user }) {
             }
             return
         }
+
         setSavedIds((prev) => {
             const next = new Set(prev)
             if (next.has(id)) {
@@ -141,9 +157,11 @@ export function JobsBrowse({ user }) {
                 <div className="page-sub">Search thousands of verified listings</div>
             </div>
 
-            <div className="card filter-bar-card" style={{ marginBottom: "1.5rem" }}>
-                <div className="filter-bar-grid">
-                    <Field label="Keyword" style={{ marginBottom: 0 }}>
+            <div className="card filter-bar-card" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
+                {/* ── Top row: keyword + search button ── */}
+                <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", alignItems: "flex-end" }}>
+                    {/* Keyword input */}
+                    <Field label="Keyword" style={{ flex: "1 1 70%", marginBottom: 0 }}>
                         <input
                             className="field-input"
                             placeholder="Title, skill, keyword…"
@@ -152,6 +170,24 @@ export function JobsBrowse({ user }) {
                             onKeyDown={(e) => e.key === "Enter" && loadJobs(filters)}
                         />
                     </Field>
+
+                    {/* Search button */}
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ flex: "0 0 30%", maxWidth: "10rem", height: "38px" }}
+                        onClick={() => loadJobs(filters)}
+                        disabled={fetching}
+                    >
+                        {fetching ? <Spinner size="sm" white /> : "Search"}
+                    </button>
+                </div>
+
+                {/* ── Filters grid below ── */}
+                <div
+                    className="filter-bar-grid"
+                    style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}
+                >
                     <Field label="Location" style={{ marginBottom: 0 }}>
                         <input
                             className="field-input"
@@ -160,16 +196,7 @@ export function JobsBrowse({ user }) {
                             onChange={(e) => setF("location", e.target.value)}
                         />
                     </Field>
-                    <Field label="Currency" style={{ marginBottom: 0 }}>
-                        <select className="field-select" value={filters.currency} onChange={(e) => setF("currency", e.target.value)}>
-                            <option value="">Any</option>
-                            {CURRENCIES.map((c) => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
+
                     <Field label="Min salary" style={{ marginBottom: 0 }}>
                         <input
                             className="field-input"
@@ -181,6 +208,7 @@ export function JobsBrowse({ user }) {
                             onChange={(e) => setF("minSalary", e.target.value === "" ? "" : String(Math.max(0, Number(e.target.value) || 0)))}
                         />
                     </Field>
+
                     <Field label="Max salary" style={{ marginBottom: 0 }}>
                         <input
                             className="field-input"
@@ -192,6 +220,18 @@ export function JobsBrowse({ user }) {
                             onChange={(e) => setF("maxSalary", e.target.value === "" ? "" : String(Math.max(0, Number(e.target.value) || 0)))}
                         />
                     </Field>
+
+                    <Field label="Currency" style={{ marginBottom: 0 }}>
+                        <select className="field-select" value={filters.currency} onChange={(e) => setF("currency", e.target.value)}>
+                            <option value="">Any</option>
+                            {CURRENCIES.map((c) => (
+                                <option key={c} value={c}>
+                                    {c}
+                                </option>
+                            ))}
+                        </select>
+                    </Field>
+
                     <Field label="Type" style={{ marginBottom: 0 }}>
                         <select className="field-select" value={filters.type} onChange={(e) => setF("type", e.target.value)}>
                             <option value="">All types</option>
@@ -200,17 +240,6 @@ export function JobsBrowse({ user }) {
                             ))}
                         </select>
                     </Field>
-                    <div className="filter-bar-actions" style={{ paddingBottom: "0.05rem" }}>
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            style={{ height: "38px", width: "100%" }}
-                            onClick={() => loadJobs(filters)}
-                            disabled={fetching}
-                        >
-                            {fetching ? <Spinner size="sm" white /> : "Search"}
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -241,7 +270,42 @@ export function JobsBrowse({ user }) {
                 </>
             )}
 
-            {selected && <JobDetailModal job={selected} onClose={() => setSelected(null)} user={user} onApplied={() => {}} />}
+            {selected && (
+                <JobDetailModal
+                    job={selected}
+                    onClose={() => setSelected(null)}
+                    user={user}
+                    onUpdate={(application) => {
+                        setResults((prev) =>
+                            prev.map((job) => {
+                                // match by job_id for normal updates
+                                if (application.status !== "deleted") {
+                                    if (job.id === application.job_id) {
+                                        return {
+                                            ...job,
+                                            submitted: {
+                                                application_id: application.id,
+                                                cv_url: application.cv_url,
+                                                cv_id: application.cv_id,
+                                                cv_name: application.cv_name,
+                                                status: application.status,
+                                            },
+                                        }
+                                    }
+                                    return job
+                                }
+
+                                if (job.submitted?.application_id === application.id) {
+                                    const { submitted, ...rest } = job
+                                    return rest
+                                }
+
+                                return job
+                            }),
+                        )
+                    }}
+                />
+            )}
         </div>
     )
 }

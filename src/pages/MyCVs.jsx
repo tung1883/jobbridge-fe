@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 
 import { cvs, downloads } from "../api.js"
 import { Spinner, Alert, EmptyState, LoadingPage, DateDisplay, ConfirmModal, PdfViewerModal } from "../shared.jsx"
@@ -97,8 +97,6 @@ export function MyCVs() {
                     onClose={() => setPreviewing(false)}
                     onDelete={async () => {
                         setDeleteId(previewing.id)
-                        // await cvs.delete(previewing.id)
-                        // setPreviewing(null)
                         refetch()
                     }}
                 />
@@ -161,7 +159,7 @@ export function MyCVs() {
                             <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                                 {cv.file_path && (
                                     <button
-                                        className="btn btn-secondary btn-sm"
+                                        className="btn btn-secondary"
                                         target="_blank"
                                         rel="noreferrer"
                                         onClick={async (e) => {
@@ -174,7 +172,7 @@ export function MyCVs() {
                                 )}
                                 {cv.file_path && cv.file_path.endsWith(".pdf") && (
                                     <button
-                                        className="btn btn-secondary btn-sm"
+                                        className="btn btn-secondary"
                                         target="_blank"
                                         rel="noreferrer"
                                         onClick={async (e) => {
@@ -187,7 +185,7 @@ export function MyCVs() {
                                 )}
                                 <button
                                     type="button"
-                                    className="btn btn-danger btn-sm"
+                                    className="btn btn-danger"
                                     onClick={() => setDeleteId(cv.id)}
                                     disabled={deletingId === cv.id}
                                 >

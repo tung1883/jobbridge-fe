@@ -162,8 +162,11 @@ async function request(method, path, body, isFile = false) {
         }
 
         if (res.status === 204) return null
+        
         const text = await res.text()
+
         if (!text || !text.trim()) return null
+        
         try {
             return JSON.parse(text)
         } catch {
@@ -294,8 +297,10 @@ export const ranking = {
 export const applications = {
     apply: (job_id, cv_id) => post("/applications", { job_id, cv_id }),
     getMine: () => get("/applications/my"),
-    getForJob: (job_id) => get(`/applications/job/${job_id}`),
+    getApplicationsForRecruiterJob: (job_id) => get(`/applications/job/${job_id}`),
     updateStatus: (id, status) => put(`/applications/${id}/status`, { status }),
+    updateApplication: (id, data) => put(`/applications/${id}`, data),
+    deleteApplication: (id) => del(`/applications/${id}`),
 }
 
 // --- download ---

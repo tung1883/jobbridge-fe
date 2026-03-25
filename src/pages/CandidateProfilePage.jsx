@@ -103,7 +103,6 @@ export function CandidateProfilePage() {
                             <ImageViewer
                                 src={fileUrl(profile.avatar_url)}
                                 alt="logo"
-                                ImageViewer
                                 style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
                             />
                         ) : (

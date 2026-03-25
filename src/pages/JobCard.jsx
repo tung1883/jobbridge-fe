@@ -4,8 +4,7 @@ export function JobCard({ job, onView, savedIds, onToggleSave }) {
     const isSaved = savedIds?.has(String(job.id))
 
     return (
-        <div className="card card-hover" style={{ cursor: "pointer", display: "flex", flexDirection: "column" }} 
-            onClick={onView}>
+        <div className="card card-hover" style={{ cursor: "pointer", display: "flex", flexDirection: "column" }} onClick={onView}>
             <div className="flex-between" style={{ marginBottom: "0.75rem" }}>
                 <span className="badge badge-gold">{job.type || "Full-time"}</span>
                 <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
@@ -21,7 +20,7 @@ export function JobCard({ job, onView, savedIds, onToggleSave }) {
                             title={isSaved ? "Remove from saved" : "Save job"}
                             style={{ fontSize: "1rem" }}
                         >
-                            {isSaved ? "🔖" : "🏷️"}
+                            {isSaved ? "🏷️" : "🔖"}
                         </button>
                     )}
                 </div>
@@ -36,9 +35,9 @@ export function JobCard({ job, onView, savedIds, onToggleSave }) {
                 <SalaryDisplay min={job.min_salary} max={job.max_salary} currency={job.currency} />
             </div>
             <div className="divider" style={{ margin: "0.85rem 0 0.75rem" }} />
-            
-            {job?.submittedStatus ? (
-                <span 
+
+            {job?.submitted ? (
+                <span
                     className="btn btn-secondary btn-sm"
                     style={{ width: "100%", justifyContent: "center" }}
                     onClick={(e) => {

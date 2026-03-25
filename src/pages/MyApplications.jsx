@@ -1,9 +1,13 @@
-import { applications } from "../api.js"
+import { useState } from "react"
+
+import { applications, jobs } from "../api.js"
 import { StatusBadge, EmptyState, LoadingPage, ErrorPage, DateDisplay } from "../shared.jsx"
+import { JobDetailModal } from "./JobDetailModal.jsx"
 import { useAsync } from "../useAsync.js"
 
-export function MyApplications() {
+export function MyApplications({ user }) {
     const { data, loading, error, refetch } = useAsync(() => applications.getMine(), [])
+    const [ selected, setSelected ] = useState(null)
 
     if (loading) return <LoadingPage />
     if (error) return <ErrorPage message={error} onRetry={refetch} />
@@ -33,7 +37,28 @@ export function MyApplications() {
                         </thead>
                         <tbody>
                             {list.map((app) => (
-                                <tr key={app.id}>
+                                <tr 
+                                    key={app.id}
+                                    style={{
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={async () => {
+                                        const job = await jobs.getById(app.job_id)
+   
+                                        const updatedJob = {
+                                            ...job,
+                                            submitted: {
+                                                status: app.status,
+                                                cv_id: app?.cv_id,
+                                                cv_url: app.cv_url,
+                                                cv_name: app.cv_name,
+                                                application_id: app.id
+                                            },
+                                        }
+
+                                        setSelected(updatedJob)
+                                    }}
+                                >
                                     <td style={{ fontWeight: 500 }}>{app.title || "—"}</td>
                                     <td style={{ color: "var(--muted)" }}>{app.company_name || "—"}</td>
                                     <td style={{ color: "var(--muted)" }}>{app.location || "—"}</td>
@@ -49,6 +74,9 @@ export function MyApplications() {
                     </table>
                 </div>
             )}
+
+            {selected && <JobDetailModal job={selected} user={user} 
+                onClose={() => setSelected(null)} onUpdate={() => refetch()}/>}
         </div>
     )
 }
