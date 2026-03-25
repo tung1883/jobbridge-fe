@@ -124,7 +124,7 @@ export function JobForm({ editJob, navigateTo }) {
             {success && <Alert type="success">{success} Redirecting…</Alert>}
 
             <div className="card form-card" style={{ maxWidth: 680, margin: "0 auto" }}>
-                <Field label="Job title" error={form.errors.title}>
+                <Field label="Job Title" error={form.errors.title}>
                     <input
                         className={`field-input${form.errors.title ? " err" : ""}`}
                         value={form.values.title}
@@ -142,7 +142,7 @@ export function JobForm({ editJob, navigateTo }) {
                             placeholder="City or Remote"
                         />
                     </Field>
-                    <Field label="Job type">
+                    <Field label="Job Type">
                         <select className="field-select" value={form.values.type} onChange={(e) => form.set("type", e.target.value)}>
                             {JOB_TYPES.map((t) => (
                                 <option key={t}>{t}</option>
@@ -152,7 +152,7 @@ export function JobForm({ editJob, navigateTo }) {
                 </div>
 
                 <div className="field-row-3">
-                    <Field label="Min salary">
+                    <Field label="Min Salary">
                         <input
                             className="field-input"
                             type="number"
@@ -163,7 +163,7 @@ export function JobForm({ editJob, navigateTo }) {
                             placeholder="50000"
                         />
                     </Field>
-                    <Field label="Max salary" error={form.errors.max_salary}>
+                    <Field label="Max Salary" error={form.errors.max_salary}>
                         <input
                             className={`field-input${form.errors.max_salary ? " err" : ""}`}
                             type="number"

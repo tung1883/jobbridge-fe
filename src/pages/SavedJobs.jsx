@@ -26,10 +26,12 @@ export function SavedJobs({ navigateTo, user }) {
     const loadFromApi = useCallback(async () => {
         setLoading(true)
         setError("")
+
         try {
             const list = await savedJobs.list()
             setSaved(list)
             setSavedIds(new Set(list.map((j) => String(j.id))))
+            console.log(list)
         } catch (e) {
             setError(e.message || "Could not load saved jobs.")
             setSaved([])

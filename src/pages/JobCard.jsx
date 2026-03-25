@@ -2,6 +2,7 @@ import { SalaryDisplay } from "../shared.jsx"
 
 export function JobCard({ job, onView, savedIds, onToggleSave }) {
     const isSaved = savedIds?.has(String(job.id))
+    console.log(job)
 
     return (
         <div className="card card-hover" style={{ cursor: "pointer", display: "flex", flexDirection: "column" }} onClick={onView}>
@@ -32,7 +33,7 @@ export function JobCard({ job, onView, savedIds, onToggleSave }) {
                 {job.company_name || "Company"} · {job.location || "Location not specified"}
             </div>
             <div style={{ fontSize: "var(--text-sm)", fontWeight: 500, color: "var(--ink)", marginBottom: "auto" }}>
-                <SalaryDisplay min={job.min_salary} max={job.max_salary} currency={job.currency} />
+                <SalaryDisplay min={job.salary_min} max={job.salary_max} currency={job.currency} />
             </div>
             <div className="divider" style={{ margin: "0.85rem 0 0.75rem" }} />
 

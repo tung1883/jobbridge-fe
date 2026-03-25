@@ -82,6 +82,25 @@ export function Field({ label, optional, error, hint, children, style }) {
 }
 
 export function Modal({ title, sub, onClose, children, footer, wide }) {
+    const modalRef = useRef(null)
+    const [needsTopMargin, setNeedsTopMargin] = useState(false)
+
+    useEffect(() => {
+        const el = modalRef.current
+        if (!el) return
+        const check = () => {
+            const rect = el.getBoundingClientRect()
+            console.log(rect)
+            setNeedsTopMargin(rect.top < 50) // 48px ≈ 3rem
+            console.log(needsTopMargin)
+        }
+
+        check()
+        
+        window.addEventListener("resize", check)
+        return () => window.removeEventListener("resize", check)
+    }, [])
+
     useEffect(() => {
         const h = (e) => {
             if (e.key === "Escape" && onClose) onClose()
@@ -104,7 +123,15 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
             }}
             style={{ zIndex: 10000 }}
         >
-            <div className={`modal${wide ? " modal-lg" : ""}`} role="dialog" aria-modal="true">
+            <div
+                className={`modal${wide ? " modal-lg" : ""}`}
+                role="dialog"
+                aria-modal="true"
+                ref={modalRef}
+                style={{
+                    marginTop: needsTopMargin ? "10em" : 0,
+                }}
+            >
                 <div className="modal-header">
                     <div>
                         <div className="modal-title">{title}</div>
