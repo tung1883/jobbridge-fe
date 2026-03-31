@@ -2,12 +2,12 @@ import { useState } from "react"
 
 import { applications, jobs } from "../api.js"
 import { StatusBadge, EmptyState, LoadingPage, ErrorPage, DateDisplay } from "../shared.jsx"
-import { JobDetailModal } from "./JobDetailModal.jsx"
+import { DetailModal } from "./DetailModal/DetailModal.jsx"
 import { useAsync } from "../useAsync.js"
 
 export function MyApplications({ user }) {
     const { data, loading, error, refetch } = useAsync(() => applications.getMine(), [])
-    const [ selected, setSelected ] = useState(null)
+    const [selected, setSelected] = useState(null)
 
     if (loading) return <LoadingPage />
     if (error) return <ErrorPage message={error} onRetry={refetch} />
@@ -37,14 +37,14 @@ export function MyApplications({ user }) {
                         </thead>
                         <tbody>
                             {list.map((app) => (
-                                <tr 
+                                <tr
                                     key={app.id}
                                     style={{
-                                        cursor: 'pointer'
+                                        cursor: "pointer",
                                     }}
                                     onClick={async () => {
                                         const job = await jobs.getById(app.job_id)
-   
+
                                         const updatedJob = {
                                             ...job,
                                             submitted: {
@@ -52,7 +52,7 @@ export function MyApplications({ user }) {
                                                 cv_id: app?.cv_id,
                                                 cv_url: app.cv_url,
                                                 cv_name: app.cv_name,
-                                                application_id: app.id
+                                                application_id: app.id,
                                             },
                                         }
 
@@ -75,8 +75,7 @@ export function MyApplications({ user }) {
                 </div>
             )}
 
-            {selected && <JobDetailModal job={selected} user={user} 
-                onClose={() => setSelected(null)} onUpdate={() => refetch()}/>}
+            {selected && <DetailModal job={selected} user={user} onClose={() => setSelected(null)} onUpdate={() => refetch()} />}
         </div>
     )
 }

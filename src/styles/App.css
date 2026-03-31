@@ -337,7 +337,7 @@ body {
 
 .btn-secondary {
     background: transparent;
-    color: var(--accent-hover);
+    color: var(--accent-hover); 
     border-color: var(--border-md);
 }
 
@@ -633,18 +633,24 @@ body {
 }
 
 .status-interview_scheduled {
-    background: var(--sage-dim);
-    color: var(--sage);
+    background: var(--success-bg);  
+    color: var(--success);
 }
 
 .status-rejected {
     background: var(--danger-bg);
     color: var(--danger);
 }
-
 .status-pending {
     background: var(--warn-bg);
     color: var(--warn);
+}
+
+.status-under_review:hover,
+.status-shortlisted:hover,
+.status-interview_scheduled:hover,
+.status-rejected:hover {
+    filter: brightness(0.97);
 }
 
 .status-approved {

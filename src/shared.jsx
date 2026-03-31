@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 
 import { BrandLogo } from "./BrandLogo.jsx"
 import { candidateProfile, companyProfile } from "./api.js"
-import { fileUrl } from "./pages/utils.js"
+import { fileUrl } from "./utils/utils.js"
 
 export function Spinner({ size, white, gold } = {}) {
     return (
@@ -90,13 +90,11 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
         if (!el) return
         const check = () => {
             const rect = el.getBoundingClientRect()
-            console.log(rect)
             setNeedsTopMargin(rect.top < 50) // 48px ≈ 3rem
-            console.log(needsTopMargin)
         }
 
         check()
-        
+
         window.addEventListener("resize", check)
         return () => window.removeEventListener("resize", check)
     }, [])
@@ -191,7 +189,7 @@ export function TopNav({ user, navigate, onLogout }) {
                     <>
                         <div className="topnav-user-pill">
                             {avatar ? (
-                                    <ImageViewer
+                                <ImageViewer
                                     src={fileUrl(avatar)}
                                     alt="logo"
                                     style={{ width: "24px", height: "24px", objectFit: "cover", borderRadius: "50%" }}
@@ -777,5 +775,38 @@ export function PdfViewerModal({ pdfPath, pdfName, onClose, onDelete }) {
             </div>
         </>,
         document.body,
+    )
+}
+
+// for detail modals
+export function DetailCard({ icon, label, value }) {
+    return (
+        <div style={{ padding: "0.75rem 1rem", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "var(--chalk)" }}>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)", marginBottom: "0.25rem" }}>
+                {icon} {label}
+            </div>
+            <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--ink)" }}>{value}</div>
+        </div>
+    )
+}
+
+export function Section({ title, children, style }) {
+    return (
+        <div style={{ marginBottom: "1.25rem" }}>
+            <div style={{ fontWeight: 600, fontSize: "var(--text-base)", marginBottom: "0.5rem", color: "var(--ink)" }}>{title}</div>
+            <div
+                style={{
+                    fontSize: "var(--text-base)",
+                    lineHeight: 1.75,
+                    color: "var(--muted)",
+                    whiteSpace: "pre-line",
+                    maxHeight: "150px",
+                    overflowY: "auto",
+                    ...style,
+                }}
+            >
+                {children}
+            </div>
+        </div>
     )
 }

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
-import { savedJobs } from "../api.js"
+import { savedJobs, applications } from "../api.js"
 import { EmptyState, LoadingPage, Alert } from "../shared.jsx"
 import { JobCard } from "./JobCard.jsx"
-import { JobDetailModal } from "./JobDetailModal.jsx"
+import { DetailModal } from "./DetailModal/DetailModal.jsx"
 
 export function SavedJobs({ navigateTo, user }) {
     const [saved, setSaved] = useState([])
@@ -28,10 +28,27 @@ export function SavedJobs({ navigateTo, user }) {
         setError("")
 
         try {
-            const list = await savedJobs.list()
-            setSaved(list)
-            setSavedIds(new Set(list.map((j) => String(j.id))))
-            console.log(list)
+            const bookmarkList = await savedJobs.list()
+            const myApplications = await applications.getMine()
+            const appMap = new Map(
+                myApplications.map((app) => [
+                    app.job_id,
+                    {
+                        status: app.status,
+                        application_id: app.id,
+                        cv_id: app.cv_id,
+                        cv_url: app.cv_url,
+                        cv_name: app.cv_name,
+                    },
+                ]),
+            )
+
+            const updatedBookmarkList = bookmarkList.map((job) => ({
+                ...job,
+                submitted: appMap.get(job.id) || null, // null if no match
+            }))
+            setSaved(updatedBookmarkList)
+            setSavedIds(new Set(updatedBookmarkList.map((j) => String(j.id))))
         } catch (e) {
             setError(e.message || "Could not load saved jobs.")
             setSaved([])
@@ -42,8 +59,9 @@ export function SavedJobs({ navigateTo, user }) {
     }, [])
 
     useEffect(() => {
-        if (user) loadFromApi()
-        else loadLocal()
+        if (user) {
+            loadFromApi()
+        } else loadLocal()
     }, [user, loadFromApi, loadLocal])
 
     async function toggleSave(job) {
@@ -64,8 +82,10 @@ export function SavedJobs({ navigateTo, user }) {
             return
         }
         const next = saved.filter((j) => String(j.id) !== id)
+
         setSaved(next)
         setSavedIds(new Set(next.map((j) => String(j.id))))
+
         localStorage.setItem("tb_saved_jobs", JSON.stringify(next))
         const ids = JSON.parse(localStorage.getItem("tb_saved_ids") || "[]").filter((x) => String(x) !== id)
         localStorage.setItem("tb_saved_ids", JSON.stringify(ids))
@@ -100,10 +120,10 @@ export function SavedJobs({ navigateTo, user }) {
                 <div className="page-title">Saved Jobs</div>
                 <div className="page-sub">
                     {
-                        saved?.length && saved?.length > 0 && 
-                            `You have ${saved.length} job${saved.length !== 1 ? 's' : ''} bookmarked, check ${saved.length === 1 ? 'it' : 'them'} out!`
-                            // {saved.length} Job{saved.length !== 1 ? "s" : ""} Bookmarked
-                    
+                        saved?.length &&
+                            saved?.length > 0 &&
+                            `You have ${saved.length} job${saved.length !== 1 ? "s" : ""} bookmarked, check ${saved.length === 1 ? "it" : "them"} out!`
+                        // {saved.length} Job{saved.length !== 1 ? "s" : ""} Bookmarked
                     }
                 </div>
             </div>
@@ -117,7 +137,7 @@ export function SavedJobs({ navigateTo, user }) {
                     <JobCard key={job.id} job={job} onView={() => setSelected(job)} savedIds={savedIds} onToggleSave={toggleSave} />
                 ))}
             </div>
-            {selected && <JobDetailModal job={selected} onClose={() => setSelected(null)} user={user} />}
+            {selected && <DetailModal job={selected} onClose={() => setSelected(null)} user={user} />}
         </div>
     )
 }

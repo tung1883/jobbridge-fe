@@ -4,8 +4,8 @@ import { createPortal } from "react-dom"
 import { candidateProfile } from "../api.js"
 import { Alert, Field, LoadingPage, ErrorPage, Spinner, ImageViewer } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
-import { useForm, useSubmit } from "./hooks.js"
-import { fileUrl } from "./utils.js"
+import { useForm, useSubmit } from "../utils/hooks.js"
+import { fileUrl } from "../utils/utils.js"
 
 export function CandidateProfilePage() {
     const { data: profile, loading, error, refetch } = useAsync(() => candidateProfile.getOwn(), [])

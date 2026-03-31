@@ -3,7 +3,7 @@ import { useState, useRef } from "react"
 import { cvs, downloads } from "../api.js"
 import { Spinner, Alert, EmptyState, LoadingPage, DateDisplay, ConfirmModal, PdfViewerModal } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
-import { fileUrl } from "./utils.js"
+import { fileUrl } from "../utils/utils.js"
 
 export function MyCVs() {
     const { data, loading, error, refetch } = useAsync(() => cvs.list(), [])

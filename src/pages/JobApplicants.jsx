@@ -1,22 +1,22 @@
 import { useState, useMemo } from "react"
-import { applications, ranking as rankingApi } from "../api.js"
+import { applications, ranking as rankingApi, candidateProfile } from "../api.js"
 import { Alert, Spinner, StatusBadge, EmptyState, LoadingPage, SalaryDisplay, DateDisplay } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
-import { STATUS_OPTIONS } from "./constants.js"
-import { fileUrl } from "./utils.js"
+import { STATUS_OPTIONS } from "../utils/constants.js"
+import { fileUrl } from "../utils/utils.js"
+import { DetailModal } from "./DetailModal/DetailModal.jsx"
 
 export function JobApplicants({ job, onBack }) {
     const { data, loading, error, refetch } = useAsync(() => applications.getApplicationsForRecruiterJob(job.id), [job.id])
     const { data: rankData, loading: rankLoading, error: rankError } = useAsync(() => rankingApi.getForJob(job.id), [job.id])
     const [updatingId, setUpdatingId] = useState(null)
+    const [selectedApplicant, setSelectedApplicant] = useState(null)
 
     async function handleStatusChange(appId, status) {
         setUpdatingId(appId)
         try {
             await applications.updateStatus(appId, status)
             refetch()
-        } catch {
-            /* optional */
         } finally {
             setUpdatingId(null)
         }
@@ -24,7 +24,6 @@ export function JobApplicants({ job, onBack }) {
 
     const scoreMap = useMemo(() => {
         if (!rankData || !Array.isArray(rankData)) return {}
-        console.log("rankData:", rankData)  // ← what does the daemon actually return?
         return Object.fromEntries(rankData.map((r) => [r.email, { score: r.score, skills: r.skills }]))
     }, [rankData])
 
@@ -32,7 +31,6 @@ export function JobApplicants({ job, onBack }) {
         () =>
             (data || [])
                 .map((app) => {
-                    console.log("app.email:", app.email, "scoreMap hit:", scoreMap[app.email]) // ← does it match?
                     return {
                         ...app,
                         aiScore: scoreMap[app.email]?.score ?? null,
@@ -130,18 +128,27 @@ export function JobApplicants({ job, onBack }) {
                             <table className="tbl">
                                 <thead>
                                     <tr>
-                                        <th style={{ textAlign: "left", minWidth: 200 }}>Candidate</th>
+                                        <th style={{ textAlign: "left", minWidth: 200, borderRight: "0.25px solid rgba(24, 24, 27, 0.09)" }}>
+                                            Candidate
+                                        </th>
                                         <th style={{ minWidth: 110 }}>Applied</th>
                                         <th style={{ minWidth: 90 }}>CV</th>
                                         <th style={{ minWidth: 100 }}>AI Score</th>
                                         <th style={{ minWidth: 130 }}>Status</th>
-                                        <th style={{ minWidth: 180, textAlign: 'center'}}>Update Status</th>
+                                        <th style={{ minWidth: 180, textAlign: "center" }}>Update Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {list.map((app) => (
                                         <tr key={app.id}>
-                                            <td style={{ textAlign: "left" }}>
+                                            <td
+                                                style={{ textAlign: "left", cursor: "pointer", borderRight: "0.25px solid rgba(24, 24, 27, 0.09)" }}
+                                                onClick={async () => {
+                                                    const candidate = await candidateProfile.getById(app.profile_id)
+                                                    const { status, cv_url, created_at } = app
+                                                    setSelectedApplicant({ ...candidate, status, cv_url, applied_at: created_at, email: app.email })
+                                                }}
+                                            >
                                                 <div style={{ fontWeight: 500 }}>{app.email || "—"}</div>
                                                 {app.aiSkills?.length > 0 && (
                                                     <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", marginTop: "0.3rem" }}>
@@ -181,7 +188,7 @@ export function JobApplicants({ job, onBack }) {
                                                         style={{
                                                             fontWeight: 700,
                                                             fontSize: "var(--text-md)",
-                                                            color: 
+                                                            color:
                                                                 app.aiScore > 0.75
                                                                     ? "var(--success)"
                                                                     : app.aiScore > 0.4
@@ -201,7 +208,7 @@ export function JobApplicants({ job, onBack }) {
                                                 <StatusBadge status={app.status} />
                                             </td>
                                             <td style={{ textAlign: "center" }}>
-                                                <div style={{ display: "flex", alignItems: "center", justifyContent: 'center', gap: "0.4rem" }}>
+                                                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
                                                     <select
                                                         className="field-select"
                                                         style={{
@@ -209,6 +216,7 @@ export function JobApplicants({ job, onBack }) {
                                                             fontSize: "var(--text-sm)",
                                                             width: "100%",
                                                             maxWidth: 160,
+                                                            textAlign: "center",
                                                         }}
                                                         value={app.status}
                                                         disabled={updatingId === app.id}
@@ -229,6 +237,15 @@ export function JobApplicants({ job, onBack }) {
                             </table>
                         </div>
                     </div>
+
+                    {selectedApplicant && (
+                        <DetailModal
+                            mode="applicant"
+                            applicant={selectedApplicant}
+                            onClose={() => setSelectedApplicant(null)}
+                            initialView="applicant"
+                        />
+                    )}
                 </>
             )}
         </div>

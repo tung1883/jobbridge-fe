@@ -2,9 +2,9 @@ import { useEffect } from "react"
 import { jobs, companyProfile } from "../api.js"
 import { Alert, Field, LoadingPage, Spinner } from "../shared.jsx"
 import { useAsync } from "../useAsync.js"
-import { JOB_TYPES, CURRENCIES } from "./constants.js"
-import { useForm, useSubmit } from "./hooks.js"
-import { salaryStepForCurrency, parseSalaryNumber, validateSalaryMinMax } from "./salary.js"
+import { JOB_TYPES, CURRENCIES } from "../utils/constants.js"
+import { useForm, useSubmit } from "../utils/hooks.js"
+import { salaryStepForCurrency, parseSalaryNumber, validateSalaryMinMax } from "../utils/salary.js"
 
 const JOB_INIT = {
     title: "",

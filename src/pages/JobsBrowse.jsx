@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { applications, jobs, savedJobs } from "../api.js"
 import { Spinner, Alert, Field, EmptyState, LoadingPage } from "../shared.jsx"
-import { JOB_TYPES, CURRENCIES } from "./constants.js"
-import { salaryStepForCurrency, validateSalaryMinMax } from "./salary.js"
+import { JOB_TYPES, CURRENCIES } from "../utils/constants.js"
+import { salaryStepForCurrency, validateSalaryMinMax } from "../utils/salary.js"
 import { JobCard } from "./JobCard.jsx"
-import { JobDetailModal } from "./JobDetailModal.jsx"
+import { DetailModal } from "./DetailModal/DetailModal.jsx"
 
 const EMPTY_FILTERS = { search: "", location: "", minSalary: "", maxSalary: "", currency: "", type: "" }
 
@@ -29,7 +29,7 @@ export function JobsBrowse({ user }) {
 
         setFetching(true)
         setFetchErr("")
-        
+
         try {
             const res = await jobs.search({
                 search: f.search || undefined,
@@ -88,14 +88,14 @@ export function JobsBrowse({ user }) {
         }
 
         let cancelled = false
-        
+
         savedJobs
             .list()
             .then((list) => {
                 if (!cancelled) setSavedIds(new Set(list.map((j) => String(j.id))))
             })
             .catch(() => {})
-        
+
         return () => {
             cancelled = true
         }
@@ -271,7 +271,7 @@ export function JobsBrowse({ user }) {
             )}
 
             {selected && (
-                <JobDetailModal
+                <DetailModal
                     job={selected}
                     onClose={() => setSelected(null)}
                     user={user}
